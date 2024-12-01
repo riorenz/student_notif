@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Management System</title>
+</head>
+<body>
+    <h1>Student Management System</h1>
+
+    <form id="studentForm">
+        <input type="text" id="studentName" placeholder="Enter student name" required>
+        <button type="submit">Add Student</button>
+    </form>
+
+    <h2>Student List</h2>
+    <table border="1" id="studentTable">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="studentList"></tbody>
+    </table>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', fetchStudents);
+
+        // Function to fetch all students
+        async function fetchStudents() {
+            try {
+                const response = await fetch('/students');
+                const students = await response.json();
+                renderTable(students);
+            } catch (error) {
+                console.error('Error fetching students:', error);
+            }
+        }
+
+        // Function to render student data in a table
+        function renderTable(students) {
+            const tableBody = document.getElementById('studentList');
+            tableBody.innerHTML = '';
+            students.forEach(student => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${student.id}</td>
+                    <td>${student.name}</td>
+                    <td>${student.status}</td>
+                    <td>
+                        <button onclick="updateStatus(${student.id}, 'confirmed')">Confirm</button>
+                        <button onclick="updateStatus(${student.id}, 'rejected')">Reject</button>
+                        <button onclick="deleteStudent(${student.id})">Delete</button>
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+
+        // Function to handle form submission for adding a new student
+        document.getElementById('studentForm').addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const studentName = document.getElementById('studentName').value;
+            try {
+                await fetch('/students/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: studentName })
+                });
+                fetchStudents(); // Refresh the student list
+                document.getElementById('studentName').value = ''; // Clear input
+            } catch (error) {
+                console.error('Error adding student:', error);
+            }
+        });
+
+        // Function to update student status
+        async function updateStatus(id, status) {
+            try {
+                await fetch('/students/update', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id, status })
+                });
+                fetchStudents(); // Refresh the student list
+            } catch (error) {
+                console.error('Error updating student status:', error);
+            }
+        }
+
+        // Function to delete a student
+        async function deleteStudent(id) {
+            try {
+                await fetch(`/students/${id}`, {
+                    method: 'DELETE'
+                });
+                fetchStudents(); // Refresh the student list
+            } catch (error) {
+                console.error('Error deleting student:', error);
+            }
+        }
+
+        
+    </script>
+</body>
+</html>
+<h2>Notifications</h2>
+<div id="notificationArea"></div>
+
+<script>
+    async function updateStatus(id, status) {
+        const reason = prompt(`Enter reason for ${status}:`);
+        if (!reason) {
+            alert('Reason is required.');
+            return;
+        }
+
+        try {
+            const response = await fetch('/students/update', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id, status, reason })
+            });
+            const data = await response.json();
+
+            if (data.notification) {
+                displayNotification(data.notification);
+            }
+
+            fetchStudents(); // Refresh the student list
+        } catch (error) {
+            console.error('Error updating student status:', error);
+        }
+    }
+
+    function displayNotification(notification) {
+        const notificationArea = document.getElementById('notificationArea');
+        const notificationElement = document.createElement('div');
+        notificationElement.style.padding = '10px';
+        notificationElement.style.marginBottom = '10px';
+        notificationElement.style.border = '1px solid #ccc';
+        notificationElement.style.backgroundColor = notification.status === 'confirmed' ? '#d4edda' : '#f8d7da';
+        notificationElement.textContent = `Student ID: ${notification.studentId} has been ${notification.status} for the reason: "${notification.reason}" at ${notification.timestamp}`;
+        
+        notificationArea.appendChild(notificationElement);
+    }
+</script>
+
